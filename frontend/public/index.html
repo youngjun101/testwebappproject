@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TD Controller</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">TD Controller</div>
+    <div class="topbar-right">
+      <span id="conn-status" class="status status-disconnected">Disconnected</span>
+      <span id="user-email" class="muted"></span>
+      <a id="admin-link" href="/admin.html" class="btn btn-ghost" hidden>Admin</a>
+      <button id="logout-btn" class="btn btn-ghost">Sign out</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <h2>Effects</h2>
+      <div class="grid">
+        <button class="btn btn-action" data-action="triggerEffect" data-payload='{"effect":"pulse"}'>Pulse</button>
+        <button class="btn btn-action" data-action="triggerEffect" data-payload='{"effect":"strobe"}'>Strobe</button>
+        <button class="btn btn-action" data-action="triggerEffect" data-payload='{"effect":"glitch"}'>Glitch</button>
+        <button class="btn btn-action" data-action="triggerEffect" data-payload='{"effect":"bloom"}'>Bloom</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Scenes</h2>
+      <div class="grid">
+        <button class="btn btn-scene" data-action="loadScene" data-payload='{"scene":1}'>Scene 1</button>
+        <button class="btn btn-scene" data-action="loadScene" data-payload='{"scene":2}'>Scene 2</button>
+        <button class="btn btn-scene" data-action="loadScene" data-payload='{"scene":3}'>Scene 3</button>
+        <button class="btn btn-scene" data-action="loadScene" data-payload='{"scene":4}'>Scene 4</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Colors</h2>
+      <div class="grid grid-colors">
+        <button class="btn btn-color" style="--c:#ff3b30" data-action="setColor" data-payload='{"r":1,"g":0.23,"b":0.18}'>Red</button>
+        <button class="btn btn-color" style="--c:#34c759" data-action="setColor" data-payload='{"r":0.2,"g":0.78,"b":0.35}'>Green</button>
+        <button class="btn btn-color" style="--c:#0a84ff" data-action="setColor" data-payload='{"r":0.04,"g":0.52,"b":1}'>Blue</button>
+        <button class="btn btn-color" style="--c:#ffd60a" data-action="setColor" data-payload='{"r":1,"g":0.84,"b":0.04}'>Yellow</button>
+        <button class="btn btn-color" style="--c:#bf5af2" data-action="setColor" data-payload='{"r":0.75,"g":0.35,"b":0.95}'>Violet</button>
+        <button class="btn btn-color" style="--c:#ffffff" data-action="setColor" data-payload='{"r":1,"g":1,"b":1}'>White</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Master Intensity</h2>
+      <div class="slider-row">
+        <input id="intensity" type="range" min="0" max="100" value="50" />
+        <output id="intensity-out">50</output>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Transport</h2>
+      <div class="grid">
+        <button class="btn btn-action" data-action="play">Play</button>
+        <button class="btn btn-action" data-action="pause">Pause</button>
+        <button class="btn btn-action" data-action="reset">Reset</button>
+        <button class="btn btn-danger" data-action="blackout">Blackout</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Live Log</h2>
+      <pre id="log" class="log"></pre>
+    </section>
+  </main>
+
+  <script type="module" src="/script.js"></script>
+</body>
+</html>

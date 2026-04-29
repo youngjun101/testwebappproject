@@ -1,0 +1,14 @@
+{
+  "name": "td-controller-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vercel-hosted UI + serverless admin APIs for the TouchDesigner Web Controller.",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

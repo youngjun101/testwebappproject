@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — TD Controller</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body class="auth-body">
+  <main class="auth-card">
+    <h1>TD Controller</h1>
+    <p class="muted">Sign in with your operator account</p>
+
+    <form id="login-form" class="auth-form">
+      <label>
+        Email
+        <input type="email" id="email" autocomplete="username" required />
+      </label>
+      <label>
+        Password
+        <input type="password" id="password" autocomplete="current-password" required />
+      </label>
+      <button type="submit" id="login-btn" class="btn btn-primary">Sign in</button>
+      <p id="login-error" class="error" hidden></p>
+    </form>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { SUPABASE_URL, SUPABASE_ANON_KEY } from '/config.js';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Already signed in? Skip the login screen.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) window.location.href = '/index.html';
+
+    const form = document.getElementById('login-form');
+    const errEl = document.getElementById('login-error');
+    const btn = document.getElementById('login-btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errEl.hidden = true;
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        errEl.textContent = error.message;
+        errEl.hidden = false;
+        btn.disabled = false;
+        btn.textContent = 'Sign in';
+        return;
+      }
+      window.location.href = '/index.html';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — TD Controller</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">TD Controller — Admin</div>
+    <div class="topbar-right">
+      <a href="/index.html" class="btn btn-ghost">← Controller</a>
+      <button id="logout-btn" class="btn btn-ghost">Sign out</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="panel">
+      <h2>Create Operator</h2>
+      <form id="create-form" class="auth-form">
+        <label>Email <input type="email" id="new-email" required /></label>
+        <label>Temporary password <input type="password" id="new-password" minlength="8" required /></label>
+        <label>Role
+          <select id="new-role">
+            <option value="operator">operator</option>
+            <option value="super_admin">super_admin</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn-primary">Create user</button>
+        <p id="create-msg" class="muted"></p>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Existing Users</h2>
+      <table class="users-table">
+        <thead><tr><th>Email</th><th>Role</th><th>Created</th><th></th></tr></thead>
+        <tbody id="users-body"><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    import { SUPABASE_URL, SUPABASE_ANON_KEY } from '/config.js';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { window.location.href = '/login.html'; }
+
+    // Confirm role.
+    const { data: roleRow, error: roleErr } = await supabase
+      .from('user_roles').select('role').eq('id', session.user.id).maybeSingle();
+    if (roleErr || !roleRow || roleRow.role !== 'super_admin') {
+      window.location.href = '/index.html';
+    }
+
+    const authHeader = { Authorization: `Bearer ${session.access_token}` };
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = '/login.html';
+    });
+
+    async function loadUsers() {
+      const tbody = document.getElementById('users-body');
+      tbody.innerHTML = '<tr><td colspan="4" class="muted">Loading…</td></tr>';
+      const res = await fetch('/api/list-users', { headers: authHeader });
+      if (!res.ok) {
+        tbody.innerHTML = `<tr><td colspan="4" class="error">${await res.text()}</td></tr>`;
+        return;
+      }
+      const { users } = await res.json();
+      if (!users.length) { tbody.innerHTML = '<tr><td colspan="4" class="muted">No users yet</td></tr>'; return; }
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td>${u.email ?? '—'}</td>
+          <td>${u.role ?? '—'}</td>
+          <td>${new Date(u.created_at).toLocaleDateString()}</td>
+          <td><button class="btn btn-danger btn-sm" data-id="${u.id}">Delete</button></td>
+        </tr>
+      `).join('');
+
+      tbody.querySelectorAll('button[data-id]').forEach(b => {
+        b.addEventListener('click', async () => {
+          if (!confirm(`Delete ${b.closest('tr').children[0].textContent}?`)) return;
+          const r = await fetch('/api/delete-user', {
+            method: 'POST',
+            headers: { ...authHeader, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: b.dataset.id }),
+          });
+          if (!r.ok) { alert(await r.text()); return; }
+          loadUsers();
+        });
+      });
+    }
+
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById('create-msg');
+      msg.textContent = 'Creating…';
+      const r = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { ...authHeader, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('new-email').value.trim(),
+          password: document.getElementById('new-password').value,
+          role: document.getElementById('new-role').value,
+        }),
+      });
+      if (!r.ok) { msg.textContent = await r.text(); return; }
+      msg.textContent = 'User created.';
+      e.target.reset();
+      loadUsers();
+    });
+
+    loadUsers();
+  </script>
+</body>
+</html>
