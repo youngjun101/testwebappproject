@@ -1,21 +1,25 @@
 // Persistent WebSocket relay for the TouchDesigner Web Controller.
-// - Verifies Supabase-issued JWTs from web clients.
+// - Verifies Supabase-issued JWTs via the project's JWKS endpoint (ES256).
 // - Recognizes a single TouchDesigner client by static service key.
 // - Routes web → TD and TD → all web clients.
 
 import 'dotenv/config';
 import http from 'http';
 import { WebSocketServer } from 'ws';
-import jwt from 'jsonwebtoken';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const PORT = process.env.PORT || 8080;
-const JWT_SECRET = process.env.SUPABASE_JWT_SECRET;
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const TD_KEY = process.env.TD_SERVICE_KEY;
 
-if (!JWT_SECRET || !TD_KEY) {
-  console.error('FATAL: SUPABASE_JWT_SECRET and TD_SERVICE_KEY must be set.');
+if (!SUPABASE_URL || !TD_KEY) {
+  console.error('FATAL: SUPABASE_URL and TD_SERVICE_KEY must be set.');
   process.exit(1);
 }
+
+const JWKS = createRemoteJWKSet(
+  new URL(`${SUPABASE_URL}/auth/v1/.well-known/jwks.json`)
+);
 
 const server = http.createServer((req, res) => {
   if (req.url === '/health') { res.writeHead(200); res.end('ok'); return; }
@@ -37,31 +41,33 @@ server.on('upgrade', (req, socket, head) => {
     return;
   }
 
-  let clientInfo;
-
   if (token === TD_KEY) {
-    clientInfo = { isTouchDesigner: true, label: 'touchdesigner' };
-  } else {
-    try {
-      const payload = jwt.verify(token, JWT_SECRET);
-      clientInfo = {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws.info = { isTouchDesigner: true, label: 'touchdesigner' };
+      wss.emit('connection', ws, req);
+    });
+    return;
+  }
+
+  // Async JWT verification for web clients.
+  jwtVerify(token, JWKS)
+    .then(({ payload }) => {
+      const info = {
         isTouchDesigner: false,
         userId: payload.sub,
         email: payload.email,
         label: `web:${payload.email || payload.sub}`,
       };
-    } catch (err) {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        ws.info = info;
+        wss.emit('connection', ws, req);
+      });
+    })
+    .catch((err) => {
       console.warn('JWT rejected:', err.message);
       socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
       socket.destroy();
-      return;
-    }
-  }
-
-  wss.handleUpgrade(req, socket, head, (ws) => {
-    ws.info = clientInfo;
-    wss.emit('connection', ws, req);
-  });
+    });
 });
 
 let tdSocket = null;
@@ -71,23 +77,19 @@ wss.on('connection', (ws) => {
 
   if (ws.info.isTouchDesigner) {
     if (tdSocket && tdSocket !== ws) {
-      // Replace stale TD connection.
       try { tdSocket.close(1000, 'replaced'); } catch {}
     }
     tdSocket = ws;
     broadcastToWeb({ type: 'status', td: 'connected' });
   } else {
-    // Tell the new web client whether TD is online.
     safeSend(ws, { type: 'status', td: tdSocket ? 'connected' : 'disconnected' });
   }
 
   ws.on('message', (raw) => {
     const text = raw.toString();
     if (ws.info.isTouchDesigner) {
-      // TD → all web clients.
       broadcastToWeb(text);
     } else {
-      // Web → TD only.
       if (tdSocket && tdSocket.readyState === 1) {
         tdSocket.send(text);
       } else {
