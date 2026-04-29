@@ -9,4 +9,4 @@
 
 export const SUPABASE_URL = 'https://weexgezzabwswvnramlo.supabase.co';
 export const SUPABASE_ANON_KEY = 'sb_publishable_g_rnEoHLVzTuTfGwVs96kQ_OL7n7t6p';
-export const RELAY_URL = 'wss://your-relay.onrender.com';
+export const RELAY_URL = 'wss://td-relay.onrender.com';
